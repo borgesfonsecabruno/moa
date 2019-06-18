@@ -209,31 +209,22 @@ public class Minas extends AbstractNoveltyDetection {
 			}
 			initialized = true;
 			timestamp = 1;
-			for (int i = 0; i < model.size(); i++)
-				System.out.println(i + ". " + Arrays.toString(model.get(i).getCenter()));
 
-			System.out.println("********************** Inicio da fase Online ****************************");
 			return;
 		}
 
 		// fase online
 		unsupervisedModelUpdate(inst);
 
-		if (timestamp % 10000 == 0)
-			System.out.println(timestamp);
 
 		//
 		if (timestamp % timeWindow == 0) {
-			System.out.println("Antes: " + "Ex: " + timestamp + " - " + "Unknown size: " + unknownSet.size() + " - "
-					+ "Model size:" + model.size());
+
 			putMicroSleep();
 			removeUnknown();
-			System.out.println("Depois: " + "Ex: " + timestamp + " - " + "Unknown size: " + unknownSet.size() + " - "
-					+ "Model size:" + model.size());
+
 		}
-		if (timestamp == 90000)
-			for (int i = 0; i < model.size(); i++)
-				System.out.println(Arrays.toString(model.get(i).getCenter()));
+
 		timestamp++;
 	}
 
