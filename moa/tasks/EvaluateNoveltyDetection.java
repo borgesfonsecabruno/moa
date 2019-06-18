@@ -30,9 +30,15 @@ public class EvaluateNoveltyDetection extends NoveltyDetectionMainTask implement
 
 	private static final long serialVersionUID = 1L;
 	
+	@Override
+	public String getPurposeString() {
+        return "Detect novelty detection on a stream by classifying then training with each example in sequence.";
+    }
+
+	
 	public ClassOption streamOption = new ClassOption("stream", 's',
             "Stream to evaluate on.", ClusteringStream.class,
-            "FileStream -f C:\\Users\\bf_04\\Documents\\MOA3_fold1_ini.arff");
+            "FileStream");
 
 	public ClassOption algorithmOption0 = new ClassOption("algorithm", 'm',
         "Algorithm to use.", AbstractNoveltyDetection.class, "minas.Minas");
@@ -52,14 +58,9 @@ public class EvaluateNoveltyDetection extends NoveltyDetectionMainTask implement
 	public EvaluateNoveltyDetection() {
 	}
 	
-	public EvaluateNoveltyDetection(InstanceStream stream, NoveltyDetection algorithm) {
-		streamOption.setCurrentObject(stream);
-		algorithmOption0.setCurrentObject(algorithm);
-	}
 	@Override
 	public Class<?> getTaskResultType() {
-		// TODO Auto-generated method stub
-		return null;
+		return LearningCurve.class;
 	}
 
 	@Override
