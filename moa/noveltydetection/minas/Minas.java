@@ -5,12 +5,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -59,6 +57,7 @@ public class Minas extends AbstractNoveltyDetection {
 	 * String[]{"KMeans algorithm for clustering" }, 0);
 	 */
 
+	protected int C = 0;
 	private boolean initialized; // 0: offline phase, 1: online phase
 	private Map<Integer, LinkedList<Instance>> buffer;
 	/*
@@ -162,10 +161,10 @@ public class Minas extends AbstractNoveltyDetection {
 
 				// is buffer has this class index?
 				if (buffer.containsKey(index)) {
-					buffer.get(index).add(instance); 
+					buffer.get(index).add(instance);
 
 				}
-				// se a classe não está no buffer
+				// class not belongs buffer
 				else {
 					LinkedList<Instance> newClass = new LinkedList<Instance>();
 					newClass.add(instance);
@@ -180,24 +179,30 @@ public class Minas extends AbstractNoveltyDetection {
 
 			}
 
-			if (clusteringOfflineOption.getChosenIndex() == 0) { // KMeans como algoritmo de clustering
+			if (clusteringOfflineOption.getChosenIndex() == 0) { // KMeans as clustering algorithm
 				for (Map.Entry<Integer, LinkedList<Instance>> map : buffer.entrySet()) {
 					LinkedList<Instance> examples = map.getValue();
 
+					if (map.getKey() > C)
+						C = map.getKey();
+
 					MicroCluster[] kernels = createKmeansModel(examples, this.k);
 
-					// adicionando os micro-grupos no model
+					// add micro cluster to model
 					for (int i = 0; i < kernels.length; i++)
 						updateModel(kernels[i], "normal", map.getKey());
 
 				}
 
-			} else { // Clustream como algoritmo de clustering
+			} else { // Clustream as clustering algorithm
 
 				for (Map.Entry<Integer, LinkedList<Instance>> map : buffer.entrySet()) {
 					LinkedList<Instance> examples = map.getValue();
 
 					Clustering clustreamModel = createClustreamModel(examples, this.k);
+
+					if (map.getKey() > C)
+						C = map.getKey();
 
 					for (int i = 0; i < clustreamModel.size(); i++) {
 						ClustreamKernel clusKernel = (ClustreamKernel) clustreamModel.get(i);
@@ -209,13 +214,11 @@ public class Minas extends AbstractNoveltyDetection {
 			}
 			initialized = true;
 			timestamp = 1;
-
 			return;
 		}
 
-		// fase online
+		// online phase
 		unsupervisedModelUpdate(inst);
-
 
 		//
 		if (timestamp % timeWindow == 0) {
@@ -236,8 +239,8 @@ public class Minas extends AbstractNoveltyDetection {
 			minExamplesMicro = (int) ((float) 2000 / this.k);
 
 			/*
-			 * criei uma lista para identificar os exemplos que serão removidos após criar
-			 * os novos micro-grupos.
+			 * map to identify elements that belong to the new micro cluster, and later
+			 * remove from unknown
 			 */
 			HashMap<Long, Integer> remove = new HashMap<Long, Integer>();
 			MicroCluster[] unknownModel;
@@ -267,8 +270,7 @@ public class Minas extends AbstractNoveltyDetection {
 
 						String fileText = "";
 
-						// centroid distance of new group to nearest centroid group is < than a
-						// threshold
+						// centroid distance of new group to nearest centroid group is < than a threshold
 						if (shortDist < vthreshold) {
 							// extension
 							if (model.get(pos).getCategory().equalsIgnoreCase("normal")
@@ -289,7 +291,7 @@ public class Minas extends AbstractNoveltyDetection {
 							updateModel(micro, "nov", noveltyId);
 
 							if (checkReocurrence(micro)) {
-								// recorrencia de uma novidade
+								// novelty reocurrence
 								if (micro.getCategory().equalsIgnoreCase("ext"))
 									fileText = "Thinking " + "Extensao2:" + "C " + micro.getClassId() + " - "
 											+ micro.getN() + " exemplos";
@@ -297,7 +299,7 @@ public class Minas extends AbstractNoveltyDetection {
 									fileText = "Thinking " + "ExtensaoNovidade2: " + "N " + micro.getClassId() + " - "
 											+ micro.getN() + " exemplos";
 							} else {
-								// novidade
+								// novelty
 								fileText = "ThinkingNov: " + "Novidade " + noveltyId + " - " + (int) micro.getN()
 										+ " exemplos";
 								noveltyId++;
@@ -418,7 +420,8 @@ public class Minas extends AbstractNoveltyDetection {
 	}
 
 	public String[] closerMicro(MicroCluster micro) {
-		double shortDist = distance(model.get(0).getCenter(), micro.getCenter());;
+		double shortDist = distance(model.get(0).getCenter(), micro.getCenter());
+		;
 		int pos = 0;
 		double dist;
 
@@ -461,35 +464,30 @@ public class Minas extends AbstractNoveltyDetection {
 		this.clusters = null;
 
 		/*
-		 * vetor com os k centros iniciais da classe: necessário passar k centros para o
-		 * kmeans TODO: Transformar em centros aleatorios
+		 * array with k initial centers kmeans TODO: randomize centers
 		 */
 		MicroCluster[] centers = new MicroCluster[kValue];
 
 		/*
-		 * cada entrada dessa lista é um exemplo, o kmeans só trabalha com MicroCluster,
-		 * entao foi necessario transformar cada exemplo em 1 MicroCluster
+		 * each list input is an example transformed to MicroCluster kmeans works with
+		 * microcluster
 		 */
 		List<MicroCluster> kmeansBuffer = new LinkedList<MicroCluster>();
 
 		for (int i = 0; i < examples.size(); i++) {
 
-			/* transformando exemplo em MicroCluster */
+			/* transforming in MicroCluster */
 			MicroCluster data = new MicroCluster(examples.get(i), dim, timestamp, t, kValue);
 			kmeansBuffer.add(data);
 
-			// Começando com centros não-aleatorios...
+			// Centers unrandom..
 			if (i < kValue) {
 				centers[i] = (MicroCluster) data.copy();
-
-				// System.out.println(Arrays.toString(Arrays.copyOfRange(centers[i].getCenter(),
-				// 0, centers[i].getCenter().length-1)));
 			}
-			// mensagem de erro para caso acontecer de k > quantidade de elementos da classe
 		}
 
 		Clustering kmeans_clustering = kMeans(kValue, centers, kmeansBuffer);
-		// System.out.println("Tamanho " + kmeans_clustering.size());
+
 		MicroCluster[] kernels = new MicroCluster[kmeans_clustering.size()];
 
 		for (int i = 0; i < clusters.length; i++) {
@@ -508,8 +506,6 @@ public class Minas extends AbstractNoveltyDetection {
 	public MicroCluster[] clusteringOnline(Map<Long, Instance> examples, int k_online, HashMap<Long, Integer> remove) {
 		SortedSet<Long> keys = new TreeSet<>(examples.keySet());
 		MicroCluster[] kernels = null;
-
-		// if(clusteringOnlineOption.getChosenIndex() == 0) {
 		// kmeans
 
 		LinkedList<Instance> kmeansBuffer = new LinkedList<Instance>();
@@ -524,7 +520,7 @@ public class Minas extends AbstractNoveltyDetection {
 
 		kernels = createKmeansModel(kmeansBuffer, k_online);
 
-		// lista de exemplos que serão removidos da lista de unknown
+		// example list do remove from unknown
 		SortedSet<Long> removeKeys = new TreeSet<>(examples.keySet());
 		int j = 0;
 		for (Long timeKey : removeKeys) {
@@ -535,42 +531,6 @@ public class Minas extends AbstractNoveltyDetection {
 		// }
 
 		return kernels;
-		/*
-		 * else { // como fazer o clustream sem alterar no MINAS? //clustream Clustream
-		 * clusteringAlgo = new Clustream();
-		 * clusteringAlgo.kernelRadiFactorOption.setValue(2);
-		 * clusteringAlgo.maxNumKernelsOption.setValue(k_online);
-		 * clusteringAlgo.resetLearning(); clusteringAlgo.setBufferSize(1);
-		 * 
-		 * for(Long timeKey : keys) { int tam =
-		 * examples.get(timeKey).toDoubleArray().length-1; DenseInstance value = new
-		 * DenseInstance(1.0,
-		 * Arrays.copyOfRange(unknownSet.get(timeKey).toDoubleArray(), 0, tam));
-		 * 
-		 * clusteringAlgo.trainOnInstance(value); } Clustering clustream_clustering =
-		 * clusteringAlgo.getMicroClusteringResult(); MicroCluster[] clustreamModel =
-		 * new MicroCluster[clustream_clustering.size()];
-		 * 
-		 * for(int i = 0; i < clustream_clustering.size(); i++) { MicroCluster micro =
-		 * (MicroCluster) clustream_clustering.get(i); clustreamModel[i] =
-		 * (MicroCluster) micro.copy(); }
-		 * 
-		 * SortedSet<Long> removeKeys = new TreeSet<>(examples.keySet());
-		 * 
-		 * // clustream retornando os exemplos que serão removidos... List<Integer>
-		 * groupBuffer = (List<Integer>) clusteringAlgo.getGroupBuffer();
-		 * 
-		 * int count = 0;
-		 * 
-		 * for(Long timeKey: removeKeys) { remove.put(timeKey, groupBuffer.get(count));
-		 * count++;
-		 * 
-		 * }
-		 * 
-		 * return clustreamModel;
-		 * 
-		 * }
-		 */
 
 	}
 
@@ -664,13 +624,6 @@ public class Minas extends AbstractNoveltyDetection {
 	}
 
 	public void removeUnknown() {
-		/*
-		 * Iterator<Entry<Long, Instance>> it = unknown.entrySet().iterator();
-		 * 
-		 * while(it.hasNext()) { Entry<Long, Instance> unk = (Entry<Long, Instance>)
-		 * it.next(); if(unk.getKey() < timestamp - timeWindow) { it.remove(); } }
-		 */
-
 		SortedSet<Long> keys = new TreeSet<>(unknownSet.keySet());
 		for (Long key : keys) {
 			if (key < (timestamp - timeWindow)) {
@@ -681,7 +634,6 @@ public class Minas extends AbstractNoveltyDetection {
 
 	public void putMicroSleep() {
 		for (int i = 0; i < model.size(); i++) {
-			// System.out.println(model.get(i).getTime());
 			if (model.get(i).getTime() < (timestamp - 1 - timeWindow)) {
 				sleepMemory.add((MicroCluster) model.get(i).copy());
 				model.remove(i);
@@ -715,30 +667,22 @@ public class Minas extends AbstractNoveltyDetection {
 
 	@Override
 	public double[] getVotesForInstance(Instance inst) {
-		/* o moa utiliza um array, onde cada posição é uma classe
-		 * porem algumas classes novidades estão na posição 150 da lista por exemplo, mas tem class id  = 105
-		 * então tive que arrumar um jeito de adaptar...
-		*/
-		
-		// Procura maior classId na lista de modelos
-		MicroCluster microMax = model.stream().max(Comparator.comparing(MicroCluster::getClassId)).orElseThrow(NoSuchElementException::new);
-		
-		/* +1 por quê? pense que o maior index é 1, 
-		 * então vc tem a classe 0 e 1 e precisa de um 
-		 * vetor de tamanho max + 1 para representá-las
+		/*
+		 * moa uses an array, where each position its a class for now, votes = offline
+		 * phase model
 		 */
-		double[] votes = new double[(int) microMax.getClassId()+1];
 
-		// Caso não conseguir classificar todo o array será zero.
+		double[] votes = new double[(int) C + 1];
+
+		// Case is not possible classify an example, array = 0 in all positions
 		Arrays.fill(votes, 0);
 		String[] predict = doMinasPrediction(inst);
 		if (predict != null) {
 			double predictedClass = Double.parseDouble(predict[0]);
+			System.out.println();
+			if (predictedClass <= C)
+				votes[(int) predictedClass] = 1;
 
-			for (int classIndex = 0; classIndex < model.size(); classIndex++) {
-				if (predictedClass == model.get(classIndex).getClassId())
-					votes[(int) model.get(classIndex).getClassId()] = 1;
-			}
 		}
 		return votes;
 	}
