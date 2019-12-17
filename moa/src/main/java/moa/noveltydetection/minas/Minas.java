@@ -203,7 +203,9 @@ public class Minas extends AbstractNoveltyDetection {
 
 				}
 			}
-
+			
+			for(int i = 0; i < model.size(); i++)
+				System.out.println(i + "-" + model.get(i).getRadius());
 			this.initialized = true;
 			this.timestamp = 1;
 			return;

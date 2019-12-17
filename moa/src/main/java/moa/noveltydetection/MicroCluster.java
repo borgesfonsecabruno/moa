@@ -46,10 +46,10 @@ public class MicroCluster extends ClustreamKernel {
         //trivial cluster
     	if(N == 1) return 0;
 
-       return this.getDeviation()*2.0;
+       return this.getDeviationMinas()*2.0;
     }
     
-    private double[] getVarianceVector() {
+    private double[] getVarianceVectorMinas() {
         double[] res = new double[this.LS.length];
         for (int i = 0; i < this.LS.length; i++) {
             double ls = this.LS[i];
@@ -74,8 +74,8 @@ public class MicroCluster extends ClustreamKernel {
         return res;
     }
     
-    private double getDeviation(){
-        double[] variance = getVarianceVector();
+    private double getDeviationMinas(){
+        double[] variance = getVarianceVectorMinas();
         
         double sumOfDeviation = 0.0;
         for (int i = 0; i < variance.length; i++) {

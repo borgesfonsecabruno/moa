@@ -33,8 +33,8 @@ import moa.cluster.Cluster;
 import moa.cluster.Clustering;
 import moa.cluster.SphereCluster;
 import moa.clusterers.AbstractClusterer;
-import moa.clusterers.clustream.ClustreamKernel;
 import moa.core.Measurement;
+import moa.noveltydetection.MicroCluster;
 
 /** Citation: CluStream: Charu C. Aggarwal, Jiawei Han, Jianyong Wang, Philip S. Yu:
  * A Framework for Clustering Evolving Data Streams. VLDB 2003: 81-92
@@ -56,9 +56,9 @@ public class MinasClustream extends AbstractClusterer{
 
 	private int timeWindow;
 	private long timestamp = -1;
-	private ClustreamKernel[] kernels;
+	private MicroCluster[] kernels;
 	private boolean initialized;
-	private List<ClustreamKernel> buffer; // Buffer for initialization with kNN
+	private List<MicroCluster> buffer; // Buffer for initialization with kNN
 	private int bufferSize;
 	private double t = 2;
 	private int m = 50;
@@ -72,10 +72,10 @@ public class MinasClustream extends AbstractClusterer{
 
 	@Override
 	public void resetLearningImpl() {
-		this.kernels = new ClustreamKernel[maxNumKernelsOption.getValue()];
+		this.kernels = new MicroCluster[maxNumKernelsOption.getValue()];
 		this.timeWindow = timeWindowOption.getValue();
 		this.initialized = false;
-		this.buffer = new LinkedList<ClustreamKernel>();
+		this.buffer = new LinkedList<MicroCluster>();
 		this.bufferSize = maxNumKernelsOption.getValue();
 		
 		this.groupBuffer = new LinkedList<Integer>();
@@ -92,7 +92,7 @@ public class MinasClustream extends AbstractClusterer{
 		if ( !initialized ) {
 
 			if ( buffer.size() < bufferSize ) {
-				buffer.add( new ClustreamKernel(instance,dim, timestamp, t, m) );
+				buffer.add( new MicroCluster(instance,dim, timestamp, t, m) );
 				return;
 			}
 
@@ -101,7 +101,7 @@ public class MinasClustream extends AbstractClusterer{
 			//System.err.println("k="+k+" bufferSize="+bufferSize);
 			assert (k <= bufferSize);
 
-			ClustreamKernel[] centers = new ClustreamKernel[k];
+			MicroCluster[] centers = new MicroCluster[k];
 			for ( int i = 0; i < k; i++ ) {
 				centers[i] = buffer.get( i ); // TODO: make random!
 			}
@@ -109,7 +109,7 @@ public class MinasClustream extends AbstractClusterer{
 //			Clustering kmeans_clustering = kMeans(k, buffer);
 
 			for ( int i = 0; i < kmeans_clustering.size(); i++ ) {
-				kernels[i] = new ClustreamKernel( new DenseInstance(1.0,centers[i].getCenter()), dim, timestamp, t, m );
+				kernels[i] = new MicroCluster( new DenseInstance(1.0,centers[i].getCenter()), dim, timestamp, t, m );
 				//System.out.println(i + ". " + Arrays.toString(kernels[i].getCenter()));
 			}
 
@@ -120,7 +120,7 @@ public class MinasClustream extends AbstractClusterer{
 
 
 		// 1. Determine closest kernel
-		ClustreamKernel closestKernel = null;
+		MicroCluster closestKernel = null;
 		int pos = -1;
 		double minDistance = Double.MAX_VALUE;
 		for ( int i = 0; i < kernels.length; i++ ) {
@@ -166,7 +166,7 @@ public class MinasClustream extends AbstractClusterer{
 		// 3.1 Try to forget old kernels
 		for ( int i = 0; i < kernels.length; i++ ) {
 			if ( kernels[i].getRelevanceStamp() < threshold ) {
-				kernels[i] = new ClustreamKernel( instance, dim, timestamp, t, m );
+				kernels[i] = new MicroCluster( instance, dim, timestamp, t, m );
 				for(int j = 0; j < groupBuffer.size(); j++)
 					if(groupBuffer.get(j) == 1)
 						groupBuffer.set(j, -1);
@@ -193,7 +193,7 @@ public class MinasClustream extends AbstractClusterer{
 		assert (closestA != closestB);
 
 		kernels[closestA].add( kernels[closestB] );
-		kernels[closestB] = new ClustreamKernel( instance, dim, timestamp, t,  m );
+		kernels[closestB] = new MicroCluster( instance, dim, timestamp, t,  m );
 		for(int i = 0; i < groupBuffer.size(); i++)
 			if(groupBuffer.get(i) == closestB)
 				groupBuffer.set(i, closestA);
@@ -211,9 +211,9 @@ public class MinasClustream extends AbstractClusterer{
 			return new Clustering( new Cluster[0] );
 		}
 
-		ClustreamKernel[] res = new ClustreamKernel[kernels.length];
+		MicroCluster[] res = new MicroCluster[kernels.length];
 		for ( int i = 0; i < res.length; i++ ) {
-			res[i] = new ClustreamKernel( kernels[i], t, m );
+			res[i] = new MicroCluster( kernels[i], t, m );
 		}
 
 		return new Clustering( res );
@@ -244,9 +244,9 @@ public class MinasClustream extends AbstractClusterer{
 
 	//wrapper... we need to rewrite kmeans to points, not clusters, doesnt make sense anymore
 	//    public static Clustering kMeans( int k, ArrayList<Instance> points, int dim ) {
-	//        ArrayList<ClustreamKernel> cl = new ArrayList<ClustreamKernel>();
+	//        ArrayList<MicroCluster> cl = new ArrayList<MicroCluster>();
 	//        for(Instance inst : points){
-	//            cl.add(new ClustreamKernel(inst, dim , 0, 0, 0));
+	//            cl.add(new MicroCluster(inst, dim , 0, 0, 0));
 	//        }
 	//        Clustering clustering = kMeans(k, cl);
 	//        return clustering;
