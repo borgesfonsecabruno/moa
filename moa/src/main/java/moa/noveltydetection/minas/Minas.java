@@ -204,8 +204,6 @@ public class Minas extends AbstractNoveltyDetection {
 				}
 			}
 			
-			for(int i = 0; i < model.size(); i++)
-				System.out.println(i + "-" + model.get(i).getRadius());
 			this.initialized = true;
 			this.timestamp = 1;
 			return;
@@ -676,8 +674,12 @@ public class Minas extends AbstractNoveltyDetection {
 		String[] predict = doMinasPrediction(inst);
 		if (predict != null) {
 			double predictedClass = Double.parseDouble(predict[0]);
+			boolean isNovelty = (predict[1] == "nov" || predict[1] == "extNov");
 			if (predictedClass < index)
-				votes[(int) predictedClass] = 1;
+				if(!isNovelty)
+					votes[(int) predictedClass] = 1;
+				else
+					votes[(int) predictedClass] = 2;
 
 		}
 		return votes;

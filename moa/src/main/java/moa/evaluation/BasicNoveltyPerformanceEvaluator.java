@@ -34,7 +34,7 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 	protected Estimator err;
 	// sum = peso dos elementos classificados como desconhecido
 	// len = N
-	protected Estimator unknownRate;
+	protected Estimator unknowRate;
 	// Soma dos pesos de todos os exemplos
 	private double totalWeightObserved;
 
@@ -70,12 +70,11 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 		this.mNew = newEstimator();
 		this.fNew = newEstimator();
 		this.err = newEstimator();
-		this.unknownRate = newEstimator();
+		this.unknowRate = newEstimator();
 
 		this.totalWeightObserved = 0;
 	}
 
-	static int i = 0;
 
 	@Override
 	public void addResult(Example<Instance> example, double[] classVotes) {
@@ -88,60 +87,36 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 			this.totalWeightObserved += weight;
 
 			boolean predictedIsUnknown = DoubleStream.of(classVotes).allMatch(x -> x == 0.0);
-			boolean predictedClassIsNormal = (predictedClass <= this.C);
+			boolean predictedClassIsNormal = (predictedClass <= this.C && classVotes[predictedClass] == 1);
 			boolean trueClassIsNormal = (trueClass <= this.C);
 			
 			// System.out.println(trueClass + "-" + predictedClass);
-			if (predictedIsUnknown && this.unknowRateOption.isSet()) {
-				this.weightCorrect.add(0);
-				this.err.add(weight);
-				this.unknownRate.add(weight);
+			if (predictedIsUnknown) {
+				if(this.unknowRateOption.isSet()) {
+					this.weightCorrect.add(0);
+					this.err.add(weight);
+				}
+				this.unknowRate.add(weight);
 				
-				if(!trueClassIsNormal)
-					this.mNew.add(weight);
-				if(trueClassIsNormal)
-					this.fNew.add(weight);
 			} else {
-				this.unknownRate.add(0);
-				this.weightCorrect.add(predictedClass == trueClass ? weight : 0);
-				this.err.add(predictedClass == trueClass ? 0 : weight);
+				this.unknowRate.add(0);
 				
-				// Classe real é novidade
+				// Classe real Ã© novidade
 				if (!trueClassIsNormal) {
 					// Verifica se a classe predita foi erroneamente rotulada com normal
 					this.mNew.add(predictedClassIsNormal ? weight : 0);
-
-					// real = predita = novidade, ie, não incrementa no FN,
-					// mas pode incrementar no FE
-					/*if (!predictedClassIsNormal) {
-						this.err.add(trueClass == predictedClass ? 0 : weight);
-					} else {
-						// Nesse caso, o rótulo real é novidade e o predito é normal, ie,
-						// incrementa FN, mas preciso verificar se a predição foi certa ou
-						// errada para incrementar no FE
-						this.err.add(trueClass == predictedClass ? weight : 2 * weight);
-					}*/
-
+					this.err.add((predictedClass == trueClass && !predictedClassIsNormal) || !predictedClassIsNormal ? 0 : weight);
+					this.weightCorrect.add((predictedClass == trueClass && !predictedClassIsNormal) || !predictedClassIsNormal ? weight : 0);
 				} else {
 					// classe normal
 
 					// Verifica se a classe predita foi erroneamente rotulada como novidade
-					this.fNew.add(predictedClassIsNormal ? 0 : weight);		
-					
-					// real = predita = normal, ie, não incrementa no FP,
-					// mas pode incrementar no FE
-					/*if (predictedClassIsNormal) {
-						this.err.add(trueClass == predictedClass ? 0 : weight);
-					} else {
-						// Nesse caso, o rótulo real é normal e o predito é novidade, ie,
-						// incrementa FP, mas preciso verificar se a predição foi certa ou
-						// errada para incrementar no FE
-						this.err.add(trueClass == predictedClass ? 1 : 2);
-					}*/
+					this.fNew.add(predictedClassIsNormal ? 0 : weight);
+					this.err.add((predictedClass == trueClass && predictedClassIsNormal) || predictedClassIsNormal ? 0 : weight);
+					this.weightCorrect.add((predictedClass == trueClass && predictedClassIsNormal) || predictedClassIsNormal ? weight : 0);
 				}
 			}
 		}
-		BasicNoveltyPerformanceEvaluator.i++;
 	}
 
 	@Override
@@ -157,6 +132,7 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 		double fNew     = 0.0;
 		double mNew     = 0.0;
 		double err      = 0.0;
+		double unk		= 0.0;
 		
 		if(this.accuracyOutputOption.isSet())
 			accuracy = this.getFractionCorrectlyClassified();
@@ -166,14 +142,16 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 			mNew = this.getMNew();
 		if(this.errOutputOption.isSet())
 			err = this.getErr();
+		if(this.unknowRateOption.isSet())
+			unk = this.getUnknowRate();
+		
 		measurements.add(new Measurement("fnew", fNew * 100.0));
 		measurements.add(new Measurement("classified instances", this.getTotalWeightObserved()));
 		measurements.add(
 				new Measurement("classifications correct (percent)", accuracy * 100.0));
 		measurements.add(new Measurement("mnew", mNew * 100.0));
-		measurements.add(new Measurement("unknown rate", this.unknownRate.estimation() * 100));
+		measurements.add(new Measurement("unknown rate", unk * 100.0));
 		measurements.add(new Measurement("err", err * 100.0));
-
 		Measurement[] result = new Measurement[measurements.size()];
 
 		return measurements.toArray(result);
@@ -199,9 +177,13 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 
 	public double getErr() {
 		// (FP+ FN + FE)/N
-		return err.estimation();
+		return this.err.estimation();
 	}
 
+	public double getUnknowRate() {
+		// (FP+ FN + FE)/N
+		return this.unknowRate.estimation();
+	}
 	@Override
 	public void getDescription(StringBuilder sb, int indent) {
 		Measurement.getMeasurementsDescription(getPerformanceMeasurements(), sb, indent);
