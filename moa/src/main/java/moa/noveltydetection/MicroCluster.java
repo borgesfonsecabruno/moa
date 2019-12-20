@@ -29,7 +29,7 @@ public class MicroCluster extends ClustreamKernel {
 	private final static double EPSILON = 0.00005;
 	
 	private String category;
-    private double classId;//BRUNO
+    private double classId;
     private Long time = (long) 0;
     
     public MicroCluster( Instance instance, int dimensions, long timestamp , double t, int m) {

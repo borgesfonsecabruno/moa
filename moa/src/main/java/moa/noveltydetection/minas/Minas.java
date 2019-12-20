@@ -666,20 +666,25 @@ public class Minas extends AbstractNoveltyDetection {
 	@Override
 	public double[] getVotesForInstance(Instance inst) {
 
-		int index = (int) this.getC() + this.noveltyIndex();
+		int index = this.noveltyIndex();
+		
+		if(this.getC() > index)
+			index = this.getC();
+		index++;
+		
 		double[] votes = new double[index];
-
 		// Case is not possible classify an example, array = 0 in all positions
 		Arrays.fill(votes, 0);
+		
 		String[] predict = doMinasPrediction(inst);
+		
 		if (predict != null) {
 			double predictedClass = Double.parseDouble(predict[0]);
 			boolean isNovelty = (predict[1] == "nov" || predict[1] == "extNov");
-			if (predictedClass < index)
-				if(!isNovelty)
-					votes[(int) predictedClass] = 1;
-				else
-					votes[(int) predictedClass] = 2;
+			if(!isNovelty)
+				votes[(int) predictedClass] = 1;
+			else
+				votes[(int) predictedClass] = 2;
 
 		}
 		return votes;
@@ -816,7 +821,7 @@ public class Minas extends AbstractNoveltyDetection {
 	public int noveltyIndex() {
 		int max = 0;
 		for (MicroCluster m : this.model) {
-			if (m.getCategory() == "nov" && m.getClassId() > max)
+			if ((m.getCategory() == "nov" || m.getCategory() == "extNov") && m.getClassId() > max)
 				max = (int) m.getClassId();
 		}
 		return (int) max;

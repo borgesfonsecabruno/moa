@@ -56,7 +56,7 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 	
 	public FlagOption unknowRateOption = new FlagOption("unknowRate",
             'o',
-            "Unknow integrated (MNew, FNew, Err).");
+            "Separate unknown rate.");
 	
 	@Override
 	public void reset(Integer normalClasses) {
@@ -89,14 +89,17 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 			boolean predictedIsUnknown = DoubleStream.of(classVotes).allMatch(x -> x == 0.0);
 			boolean predictedClassIsNormal = (predictedClass <= this.C && classVotes[predictedClass] == 1);
 			boolean trueClassIsNormal = (trueClass <= this.C);
-			
+
 			// System.out.println(trueClass + "-" + predictedClass);
 			if (predictedIsUnknown) {
-				if(this.unknowRateOption.isSet()) {
-					this.weightCorrect.add(0);
-					this.err.add(weight);
+				if(!this.unknowRateOption.isSet()) {
+					this.weightCorrect.add(!trueClassIsNormal ? weight : 0);
+					this.err.add(!trueClassIsNormal ? 0 : weight);
+					if(trueClassIsNormal)
+						this.fNew.add(weight);
 				}
 				this.unknowRate.add(weight);
+				
 				
 			} else {
 				this.unknowRate.add(0);
@@ -108,7 +111,7 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 					this.err.add((predictedClass == trueClass && !predictedClassIsNormal) || !predictedClassIsNormal ? 0 : weight);
 					this.weightCorrect.add((predictedClass == trueClass && !predictedClassIsNormal) || !predictedClassIsNormal ? weight : 0);
 				} else {
-					// classe normal
+					// classe real é normal
 
 					// Verifica se a classe predita foi erroneamente rotulada como novidade
 					this.fNew.add(predictedClassIsNormal ? 0 : weight);
