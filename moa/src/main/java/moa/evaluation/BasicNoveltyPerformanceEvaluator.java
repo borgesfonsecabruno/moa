@@ -80,7 +80,7 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 	public void addResult(Example<Instance> example, double[] classVotes) {
 		Instance inst = example.getData();
 		double weight = inst.weight();
-		
+
 		if (weight > 0.0) {
 			int trueClass = (int) inst.classValue();
 			int predictedClass = Utils.maxIndex(classVotes);
@@ -90,11 +90,10 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 			boolean predictedClassIsNormal = (predictedClass <= this.C && classVotes[predictedClass] == 1);
 			boolean trueClassIsNormal = (trueClass <= this.C);
 
-			// System.out.println(trueClass + "-" + predictedClass);
 			if (predictedIsUnknown) {
 				if(!this.unknowRateOption.isSet()) {
-					this.weightCorrect.add(!trueClassIsNormal ? weight : 0);
-					this.err.add(!trueClassIsNormal ? 0 : weight);
+					this.weightCorrect.add(trueClassIsNormal ? 0 : weight);
+					this.err.add(trueClassIsNormal ? weight : 0);
 					if(trueClassIsNormal)
 						this.fNew.add(weight);
 				}
@@ -108,15 +107,15 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 				if (!trueClassIsNormal) {
 					// Verifica se a classe predita foi erroneamente rotulada com normal
 					this.mNew.add(predictedClassIsNormal ? weight : 0);
-					this.err.add((predictedClass == trueClass && !predictedClassIsNormal) || !predictedClassIsNormal ? 0 : weight);
-					this.weightCorrect.add((predictedClass == trueClass && !predictedClassIsNormal) || !predictedClassIsNormal ? weight : 0);
+					this.err.add(predictedClassIsNormal ? weight : 0);
+					this.weightCorrect.add(predictedClassIsNormal ? 0 : weight);
 				} else {
 					// classe real é normal
 
 					// Verifica se a classe predita foi erroneamente rotulada como novidade
 					this.fNew.add(predictedClassIsNormal ? 0 : weight);
-					this.err.add((predictedClass == trueClass && predictedClassIsNormal) || predictedClassIsNormal ? 0 : weight);
-					this.weightCorrect.add((predictedClass == trueClass && predictedClassIsNormal) || predictedClassIsNormal ? weight : 0);
+					this.err.add((predictedClass == trueClass && predictedClassIsNormal) ? 0 : weight);
+					this.weightCorrect.add((predictedClass == trueClass && predictedClassIsNormal) ? weight : 0);
 				}
 			}
 		}

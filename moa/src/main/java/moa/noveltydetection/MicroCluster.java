@@ -34,11 +34,13 @@ public class MicroCluster extends ClustreamKernel {
     
     public MicroCluster( Instance instance, int dimensions, long timestamp , double t, int m) {
         super(instance, dimensions, timestamp, t, m);
+        this.radiusFactor = 2.0;
 
     }
 
     public MicroCluster( ClustreamKernel cluster, double t, int m ) {
         super(cluster,t, m);
+        this.radiusFactor = 2.0;
     }
 
     @Override
@@ -111,5 +113,9 @@ public class MicroCluster extends ClustreamKernel {
 
 	public void setClassId(double classId) {
 		this.classId = classId;
+	}
+	
+	public double getRadiusFactor() {
+		return this.radiusFactor;
 	}
 }

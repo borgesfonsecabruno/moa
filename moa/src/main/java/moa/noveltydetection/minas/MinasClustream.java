@@ -161,10 +161,10 @@ public class MinasClustream extends AbstractClusterer{
 
 		// 3. Date does not fit, we need to free
 		// some space to insert a new kernel
-		long threshold = timestamp - timeWindow; // Kernels before this can be forgotten
+		//long threshold = timestamp - timeWindow; // Kernels before this can be forgotten
 
 		// 3.1 Try to forget old kernels
-		for ( int i = 0; i < kernels.length; i++ ) {
+		/*for ( int i = 0; i < kernels.length; i++ ) {
 			if ( kernels[i].getRelevanceStamp() < threshold ) {
 				kernels[i] = new MicroCluster( instance, dim, timestamp, t, m );
 				for(int j = 0; j < groupBuffer.size(); j++)
@@ -174,7 +174,7 @@ public class MinasClustream extends AbstractClusterer{
 				return;
 			}
 		}
-
+		*/
 		// 3.2 Merge closest two kernels
 		int closestA = 0;
 		int closestB = 0;

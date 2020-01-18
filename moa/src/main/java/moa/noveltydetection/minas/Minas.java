@@ -174,14 +174,12 @@ public class Minas extends AbstractNoveltyDetection {
 				for (Map.Entry<Integer, LinkedList<Instance>> map : this.buffer.entrySet()) {
 					LinkedList<Instance> examples = map.getValue();
 
-					if (map.getKey() > this.getC())
-						this.setC(map.getKey());
-
 					MicroCluster[] kernels = createKmeansModel(examples, this.k);
 
 					// add micro cluster to model
 					for (int i = 0; i < kernels.length; i++)
-						updateModel(kernels[i], "normal", map.getKey());
+						if(kernels[i] != null)
+							updateModel(kernels[i], "normal", map.getKey());
 
 				}
 
@@ -192,9 +190,6 @@ public class Minas extends AbstractNoveltyDetection {
 
 					Clustering clustreamModel = createClustreamModel(examples, this.k);
 
-					if (map.getKey() > this.getC())
-						this.setC(map.getKey());
-
 					for (int i = 0; i < clustreamModel.size(); i++) {
 						ClustreamKernel clusKernel = (ClustreamKernel) clustreamModel.get(i);
 						MicroCluster micro = new MicroCluster(clusKernel, this.t, this.k);
@@ -203,7 +198,7 @@ public class Minas extends AbstractNoveltyDetection {
 
 				}
 			}
-			
+			this.C = this.maxMicroCluster(this.model);
 			this.initialized = true;
 			this.timestamp = 1;
 			return;
@@ -215,7 +210,6 @@ public class Minas extends AbstractNoveltyDetection {
 		if (this.timestamp % this.timeWindow == 0) {
 			putMicroSleep();
 			removeUnknown();
-
 		}
 
 		this.timestamp++;
@@ -224,9 +218,9 @@ public class Minas extends AbstractNoveltyDetection {
 	public void unsupervisedModelUpdate(Instance inst) {
 		// instance identified as unkown
 		// unknown memory size is significant to novelty detection
-		if ((this.unknownSet.size() >= this.minExamplesUnknown) && (this.lastCheck + 2000 < this.timestamp)) {
+		if ((this.unknownSet.size() >= this.minExamplesUnknown) && (this.lastCheck + this.minExamplesUnknown < this.timestamp)) {
 			this.lastCheck = (int) this.timestamp;
-			this.minExamplesMicro = (int) ((float) 2000 / this.k);
+			this.minExamplesMicro = (int) ((float) this.minExamplesUnknown / this.k);
 
 			/*
 			 * map to identify elements that belongs to new micro cluster, and later remove
@@ -332,7 +326,7 @@ public class Minas extends AbstractNoveltyDetection {
 					pos = i;
 				}
 			}
-			double vthreshold = this.sleepMemory.get(pos).getRadius() / 2 * this.threshold;
+			double vthreshold = this.sleepMemory.get(pos).getRadius() / this.sleepMemory.get(pos).getRadiusFactor() * this.threshold;
 
 			if (shortDist <= vthreshold) {
 				if (this.sleepMemory.get(pos).getCategory().equalsIgnoreCase("normal")
@@ -397,7 +391,7 @@ public class Minas extends AbstractNoveltyDetection {
 			} else {
 				// add instance at unknown map
 				this.unknownSet.put((long) this.timestamp, inst);
-				text = text + "n�o sei ";
+				text = text + "não sei ";
 				try {
 					ArqSaida.write(text);
 					ArqSaida.write("\n");
@@ -431,8 +425,8 @@ public class Minas extends AbstractNoveltyDetection {
 			}
 		}
 
-		double vthreshold = this.model.get(pos).getRadius() / 2 * this.threshold;
-
+		double vthreshold = this.model.get(pos).getRadius() / this.model.get(pos).getRadiusFactor() * this.threshold;
+		
 		String[] info = new String[3];
 		info[0] = Integer.toString(pos);
 		info[1] = Double.toString(shortDist);
@@ -451,8 +445,14 @@ public class Minas extends AbstractNoveltyDetection {
 
 		for (Instance data : examples)
 			clusteringAlgo.trainOnInstanceImpl(data);
-
-		return clusteringAlgo.getMicroClusteringResult();
+		
+		Clustering res = new Clustering();
+		for(int i=0; i<clusteringAlgo.getMicroClusteringResult().size(); i++) {
+			ClustreamKernel c =(ClustreamKernel) clusteringAlgo.getMicroClusteringResult().get(i);
+			if(c.getN() > 2.0)
+				res.add(c);
+		}
+		return res;
 	}
 
 	protected MicroCluster[] createKmeansModel(LinkedList<Instance> examples, int kValue) {
@@ -475,7 +475,7 @@ public class Minas extends AbstractNoveltyDetection {
 
 			/* transforming in MicroCluster */
 			MicroCluster data = new MicroCluster(examples.get(i), dim, this.timestamp, this.t, kValue);
-			kmeansBuffer.add(data);
+			kmeansBuffer.add(i, data);
 
 			// Centers unrandom..
 			if (i < kValue) {
@@ -483,27 +483,35 @@ public class Minas extends AbstractNoveltyDetection {
 			}
 		}
 
-		Clustering kmeans_clustering = kMeans(kValue, centers, kmeansBuffer);
-
+		Clustering  kmeans_clustering = kMeans(kValue, centers, kmeansBuffer);
+		
 		MicroCluster[] kernels = new MicroCluster[kmeans_clustering.size()];
-
+		
 		for (int i = 0; i < this.clusters.length; i++) {
-			if (kernels[this.clusters[i]] == null)
-				kernels[this.clusters[i]] = new MicroCluster(new DenseInstance(1.0, kmeansBuffer.get(i).getCenter()),
+			double[] instanceCenter = kmeansBuffer.get(i).getCenter();
+			if (kernels[this.clusters[i]] == null) {
+				kernels[this.clusters[i]] = new MicroCluster(new DenseInstance(1.0, instanceCenter),
 						kmeansBuffer.get(i).getCenter().length, this.timestamp, this.t, kValue);
-			else
-				kernels[this.clusters[i]].insert(new DenseInstance(1.0, kmeansBuffer.get(i).getCenter().clone()), i);
+				
+			} else {
+				kernels[this.clusters[i]].insert(new DenseInstance(1.0, instanceCenter), i);
+			}
 		}
-
+		
 		kmeansBuffer.clear();
+		
+		for(int i = 0; i < kernels.length; i++) {
+			if(kernels[i] != null && kernels[i].getN() < 3.0) 
+				kernels[i] = null;
 
+		}
+		
 		return kernels;
 	}
-
+	
 	public MicroCluster[] clusteringOnline(Map<Long, Instance> examples, int k_online, HashMap<Long, Integer> remove) {
 		SortedSet<Long> keys = new TreeSet<>(examples.keySet());
 		MicroCluster[] kernels = null;
-		// kmeans
 
 		LinkedList<Instance> kmeansBuffer = new LinkedList<Instance>();
 
@@ -516,7 +524,7 @@ public class Minas extends AbstractNoveltyDetection {
 		}
 
 		kernels = createKmeansModel(kmeansBuffer, k_online);
-
+		
 		// example list do remove from unknown
 		SortedSet<Long> removeKeys = new TreeSet<>(examples.keySet());
 		int j = 0;
@@ -524,11 +532,7 @@ public class Minas extends AbstractNoveltyDetection {
 			remove.put(timeKey, this.clusters[j]);
 			j++;
 		}
-
-		// }
-
 		return kernels;
-
 	}
 
 	public void updateModel(MicroCluster micro, String category, double classId) {
@@ -624,7 +628,6 @@ public class Minas extends AbstractNoveltyDetection {
 		SortedSet<Long> keys = new TreeSet<>(this.unknownSet.keySet());
 		for (Long key : keys) {
 			if (key < (this.timestamp - this.timeWindow)) {
-
 				this.unknownSet.remove(key);
 			}
 		}
@@ -667,7 +670,6 @@ public class Minas extends AbstractNoveltyDetection {
 	public double[] getVotesForInstance(Instance inst) {
 
 		int index = this.noveltyIndex();
-		
 		if(this.getC() > index)
 			index = this.getC();
 		index++;
@@ -681,11 +683,11 @@ public class Minas extends AbstractNoveltyDetection {
 		if (predict != null) {
 			double predictedClass = Double.parseDouble(predict[0]);
 			boolean isNovelty = (predict[1] == "nov" || predict[1] == "extNov");
+			
 			if(!isNovelty)
 				votes[(int) predictedClass] = 1;
 			else
 				votes[(int) predictedClass] = 2;
-
 		}
 		return votes;
 	}
@@ -827,4 +829,17 @@ public class Minas extends AbstractNoveltyDetection {
 		return (int) max;
 	}
 
+	public int maxMicroCluster(List<MicroCluster> l) {
+		if(l != null) {
+			int maxValue = (int) l.get(0).getClassId();
+		
+			for(int i = 1; i < l.size(); i++) {
+				if((int) l.get(i).getClassId() > maxValue)
+					maxValue = (int) l.get(i).getClassId();
+			}
+			return maxValue;
+		}
+		
+		return -1;
+	}
 }

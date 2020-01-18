@@ -38,7 +38,7 @@ public abstract class AbstractNoveltyDetection extends AbstractOptionHandler imp
 
 	public Random noveltyRandom;
 
-	private int C;
+	protected int C;
 
 	public AbstractNoveltyDetection() {
 		if (isRandomizable()) {
