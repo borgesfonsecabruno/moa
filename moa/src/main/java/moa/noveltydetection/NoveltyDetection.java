@@ -18,8 +18,5 @@ public interface NoveltyDetection extends Learner<Example<Instance>>{
 	public Prediction getPredictionForInstance(Instance inst);
 	
 	public void trainOnInstance(Instance inst);
-	
-	public void atFinal();
-
 
 }

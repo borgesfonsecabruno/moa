@@ -1,8 +1,5 @@
 package moa.noveltydetection.minas;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,6 +21,7 @@ import moa.MOAObject;
 import moa.cluster.Cluster;
 import moa.cluster.Clustering;
 import moa.cluster.SphereCluster;
+import moa.clusterers.clustream.Clustream;
 import moa.clusterers.clustream.ClustreamKernel;
 import moa.core.Measurement;
 import moa.noveltydetection.AbstractNoveltyDetection;
@@ -45,13 +43,6 @@ public class Minas extends AbstractNoveltyDetection {
 	public MultiChoiceOption clusteringOfflineOption = new MultiChoiceOption("clusteringAlgorithmOffline", 'a',
 			"Clustering algorithm to use", new String[] { "KMeans", "CluStream" },
 			new String[] { "KMeans algorithm for clustering", "CluStream algorithm for clustering" }, 0);
-
-	/*
-	 * public MultiChoiceOption clusteringOnlineOption = new MultiChoiceOption(
-	 * "clusteringAlgorithmOnline", 'b', "Clustering algorithm to use", new
-	 * String[]{"KMeans", "CluStream"}, new
-	 * String[]{"KMeans algorithm for clustering" }, 0);
-	 */
 
 	// normal classes number
 	private boolean initialized; // 0: offline phase, 1: online phase
@@ -85,24 +76,6 @@ public class Minas extends AbstractNoveltyDetection {
 
 	protected int[] clusters; /* ?? kmeans control: example-class */
 	private double t; /* clustreamKernel param */
-	private FileWriter ArqSaida; // lembrar de tirar
-
-	public FileWriter getArqSaida() {
-		return ArqSaida;
-	}
-
-	// lembrar de tirar
-	String filePath = "C:\\out_\\out_\\MOA3";
-	String arqsaida = filePath + "\\resultados" + "_fold" + 1 + "_moa";
-
-	public void cria_arqsaida() throws IOException {
-		String arqsaida = filePath + "\\resultados" + "_fold" + 1 + "_moa";
-		ArqSaida = new FileWriter(new File(arqsaida), false);
-
-		String cabecalho = "Resultados";
-		ArqSaida.write(cabecalho);
-		ArqSaida.write("\n\n \n\n");
-	}
 
 	public String getName() {
 		return "MINAS";
@@ -128,12 +101,6 @@ public class Minas extends AbstractNoveltyDetection {
 		this.unknownSet = new HashMap<Long, Instance>();
 		this.sleepMemory = new LinkedList<MicroCluster>();
 
-		try {
-			cria_arqsaida();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	@Override
@@ -251,8 +218,6 @@ public class Minas extends AbstractNoveltyDetection {
 							}
 						}
 
-						String fileText = "";
-
 						// centroid distance of new group to nearest centroid group is < than a
 						// threshold
 						if (shortDist < vthreshold) {
@@ -261,13 +226,13 @@ public class Minas extends AbstractNoveltyDetection {
 									|| this.model.get(pos).getCategory().equalsIgnoreCase("ext")) {
 								// normal extension
 								updateModel(micro, "ext", this.model.get(pos).getClassId());
-								fileText = "Thinking " + "Extensao1: " + "C " + this.model.get(pos).getClassId() + " - "
-										+ (int) micro.getN() + " exemplos";
+								System.out.println("Thinking " + "Extensao1: " + "C " + this.model.get(pos).getClassId() + " - "
+										+ (int) micro.getN() + " exemplos");
 							} else {
 								// novelty extension learned online
 								updateModel(micro, "extNov", this.model.get(pos).getClassId());
-								fileText = "Thinking " + "ExtensaoNovidade1: " + "N " + this.model.get(pos).getClassId()
-										+ " - " + (int) micro.getWeight() + " exemplos";
+								System.out.println("Thinking " + "ExtensaoNovidade1: " + "N " + this.model.get(pos).getClassId()
+										+ " - " + (int) micro.getWeight() + " exemplos");
 							}
 
 						} else {
@@ -279,30 +244,22 @@ public class Minas extends AbstractNoveltyDetection {
 								if (checkReocurrence(micro)) {
 									// novelty reocurrence
 									if (micro.getCategory().equalsIgnoreCase("ext"))
-										fileText = "Thinking " + "Extensao2:" + "C " + (int)  micro.getClassId() + " - "
-												+ micro.getN() + " exemplos";
+										System.out.println("Thinking " + "Extensao2:" + "C " + (int)  micro.getClassId() + " - "
+												+ micro.getN() + " exemplos");
 									else
-										fileText = "Thinking " + "ExtensaoNovidade2: " + "N " + (int) micro.getClassId()
-												+ " - " + micro.getN() + " exemplos";
+										System.out.println("Thinking " + "ExtensaoNovidade2: " + "N " + (int) micro.getClassId()
+												+ " - " + micro.getN() + " exemplos");
 								} else {
 									// novelty
-									fileText = "ThinkingNov: " + "Novidade " + this.noveltyId + " - " + (int) micro.getN()
-											+ " exemplos";
+									System.out.println("ThinkingNov: " + "Novidade " + this.noveltyId + " - " + (int) micro.getN()
+											+ " exemplos");
 									this.noveltyId++;
-
 								}
 							} else {
-								fileText = "Thinking " + "ExtensaoNovidade3: " + "N "
+								System.out.println("Thinking " + "ExtensaoNovidade3: " + "N "
 										+ (int) this.model.get(this.model.size() - 1).getClassId() + " - " + (int) micro.getN()
-										+ " exemplos";
+										+ " exemplos");
 							}
-						}
-
-						try {
-							ArqSaida.write(fileText);
-							ArqSaida.write("\n");
-						} catch (IOException e) {
-							e.printStackTrace();
 						}
 					} // end: valid group
 				} // end: representative group
@@ -368,7 +325,6 @@ public class Minas extends AbstractNoveltyDetection {
 		try {
 
 			double radius = this.model.get(pos).getRadius();
-			String text = "Ex: " + this.timestamp + "\t Classe Real: " + inst.classValue() + "\t Classe MINAS: ";
 
 			if (shortDist <= radius) {
 				// model.get(pos).insert(instance, timestamp);
@@ -376,28 +332,10 @@ public class Minas extends AbstractNoveltyDetection {
 				info[1] = this.model.get(pos).getCategory();
 				this.model.get(pos).setTime((long) this.timestamp);
 
-				// instance identified as part of model
-				String strRet[] = ExPertenceClassConh(info);
-				String fileText = text + strRet[0];
-
-				try {
-					ArqSaida.write(fileText);
-					ArqSaida.write("\n");
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-
 				return info;
 			} else {
 				// add instance at unknown map
 				this.unknownSet.put((long) this.timestamp, inst);
-				text = text + "não sei ";
-				try {
-					ArqSaida.write(text);
-					ArqSaida.write("\n");
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
 			}
 
 		} catch (Exception E) {
@@ -437,18 +375,25 @@ public class Minas extends AbstractNoveltyDetection {
 	}
 
 	protected Clustering createClustreamModel(LinkedList<Instance> examples, int kValue) {
-		MinasClustream clusteringAlgo = new MinasClustream();
+		/*
+		 * MinasClustream clusteringAlgo = new MinasClustream();
+		 * clusteringAlgo.kernelRadiFactorOption.setValue(2);
+		 * clusteringAlgo.maxNumKernelsOption.setValue(kValue);
+		 * clusteringAlgo.resetLearning(); clusteringAlgo.setBufferSize(10);
+		 */
+	
+		Clustream clusteringAlgo = new Clustream();
 		clusteringAlgo.kernelRadiFactorOption.setValue(2);
 		clusteringAlgo.maxNumKernelsOption.setValue(kValue);
+		clusteringAlgo.timeWindowOption.setValue(Integer.MAX_VALUE);
 		clusteringAlgo.resetLearning();
-		clusteringAlgo.setBufferSize(10);
 
 		for (Instance data : examples)
 			clusteringAlgo.trainOnInstanceImpl(data);
 		
 		Clustering res = new Clustering();
-		for(int i=0; i<clusteringAlgo.getMicroClusteringResult().size(); i++) {
-			ClustreamKernel c =(ClustreamKernel) clusteringAlgo.getMicroClusteringResult().get(i);
+		for(int i=0; i < clusteringAlgo.getMicroClusteringResult().size(); i++) {
+			ClustreamKernel c = (ClustreamKernel) clusteringAlgo.getMicroClusteringResult().get(i);
 			if(c.getN() > 2.0)
 				res.add(c);
 		}
@@ -806,18 +751,6 @@ public class Minas extends AbstractNoveltyDetection {
 		SphereCluster sc = new SphereCluster(res, radius);
 		sc.setWeight(cluster.size());
 		return sc;
-	}
-
-	@Override // Retirar daqui, da task e da noveltyabstract
-	public void atFinal() {
-		try {
-			ArqSaida.close();
-			noveltyIndex();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
 	}
 
 	public int noveltyIndex() {

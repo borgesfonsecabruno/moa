@@ -147,13 +147,13 @@ public class BasicNoveltyPerformanceEvaluator extends AbstractOptionHandler impl
 		if(this.unknowRateOption.isSet())
 			unk = this.getUnknowRate();
 		
-		measurements.add(new Measurement("fnew", fNew * 100.0));
+		measurements.add(new Measurement("fnew (false positive)", fNew * 100.0));
 		measurements.add(new Measurement("classified instances", this.getTotalWeightObserved()));
 		measurements.add(
 				new Measurement("classifications correct (percent)", accuracy * 100.0));
-		measurements.add(new Measurement("mnew", mNew * 100.0));
+		measurements.add(new Measurement("mnew (false negative)", mNew * 100.0));
 		measurements.add(new Measurement("unknown rate", unk * 100.0));
-		measurements.add(new Measurement("err", err * 100.0));
+		measurements.add(new Measurement("err (total error)", err * 100.0));
 		Measurement[] result = new Measurement[measurements.size()];
 
 		return measurements.toArray(result);

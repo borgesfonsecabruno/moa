@@ -110,7 +110,6 @@ public class MinasClustream extends AbstractClusterer{
 
 			for ( int i = 0; i < kmeans_clustering.size(); i++ ) {
 				kernels[i] = new MicroCluster( new DenseInstance(1.0,centers[i].getCenter()), dim, timestamp, t, m );
-				//System.out.println(i + ". " + Arrays.toString(kernels[i].getCenter()));
 			}
 
 			buffer.clear();

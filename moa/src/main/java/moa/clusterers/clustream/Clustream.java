@@ -63,7 +63,6 @@ public class Clustream extends AbstractClusterer{
 	public Clustream() {
 	}
 
-
 	@Override
 	public void resetLearningImpl() {
 		this.kernels = new ClustreamKernel[maxNumKernelsOption.getValue()];

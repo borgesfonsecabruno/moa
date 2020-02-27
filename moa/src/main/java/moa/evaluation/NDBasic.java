@@ -15,7 +15,7 @@ public class NDBasic extends MeasureCollection implements NDMeasureCollection {
 	
 	@Override
 	protected String[] getNames() {
-		String[] names = {"Accuracy", "MNew", "FNew", "Err", "Unknown rate"};
+		String[] names = {"Accuracy", "MNew (false negative)", "FNew (false positive)", "Err (total error)", "Unknown rate"};
         return names;
 
 	}

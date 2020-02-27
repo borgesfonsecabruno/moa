@@ -718,13 +718,13 @@ public class NDTaskTextViewerPanel extends JPanel {
 			case "[std] classifications correct (percent)":
 				accuracyColumn = i; 
 				break;
-			case "mnew":
+			case "mnew (false negative)":
 				mNewColumn = i;
 				break;
-			case "fnew":
+			case "fnew (false positive)":
 				fNewColumn = i;
 				break;
-			case "err":
+			case "err (total error)":
 				errColumn = i;
 				break;
 			case "unknown rate":

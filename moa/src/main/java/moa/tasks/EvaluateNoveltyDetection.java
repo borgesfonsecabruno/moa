@@ -206,7 +206,6 @@ public class EvaluateNoveltyDetection extends NoveltyDetectionMainTask implement
 				instancesProcessed++;
 			}
 
-			algorithm.atFinal();
 			return new PreviewCollectionLearningCurveWrapper(learningCurve, this.getClass());
 		} catch (Exception e) {
 			e.printStackTrace();
