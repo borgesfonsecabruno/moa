@@ -92,7 +92,7 @@ public class MicroCluster extends ClustreamKernel {
     }
 
 	public String getCategory() {
-		return category;
+		return this.category;
 	}
 
 	public void setCategory(String category) {

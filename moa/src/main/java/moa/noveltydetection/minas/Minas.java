@@ -220,6 +220,8 @@ public class Minas extends AbstractNoveltyDetection {
 
 						// centroid distance of new group to nearest centroid group is < than a
 						// threshold
+						if(timestamp%1000 == 0)
+							System.out.println(shortDist + " - " + vthreshold);
 						if (shortDist < vthreshold) {
 							// extension
 							if (this.model.get(pos).getCategory().equalsIgnoreCase("normal")
@@ -238,7 +240,7 @@ public class Minas extends AbstractNoveltyDetection {
 						} else {
 							// novelty
 							updateModel(micro, "nov", this.noveltyId);
-
+							
 							if (Double.toString(this.model.get(this.model.size() - 1).getClassId())
 									.compareToIgnoreCase(Integer.toString(this.noveltyId) + ".0") == 0) {
 								if (checkReocurrence(micro)) {
@@ -283,7 +285,7 @@ public class Minas extends AbstractNoveltyDetection {
 					pos = i;
 				}
 			}
-			double vthreshold = this.sleepMemory.get(pos).getRadius() / this.sleepMemory.get(pos).getRadiusFactor() * this.threshold;
+			double vthreshold = this.sleepMemory.get(pos).getRadius() / this.sleepMemory.get(pos).getRadiusFactor() * this.thresholdOption.getValue();
 
 			if (shortDist <= vthreshold) {
 				if (this.sleepMemory.get(pos).getCategory().equalsIgnoreCase("normal")
@@ -328,7 +330,7 @@ public class Minas extends AbstractNoveltyDetection {
 
 			if (shortDist <= radius) {
 				// model.get(pos).insert(instance, timestamp);
-				info[0] = Double.toString(this.model.get(pos).getClassId());
+				info[0] = Double.toString(pos);
 				info[1] = this.model.get(pos).getCategory();
 				this.model.get(pos).setTime((long) this.timestamp);
 
@@ -352,7 +354,7 @@ public class Minas extends AbstractNoveltyDetection {
 	public String[] closerMicro(MicroCluster micro) {
 		double shortDist = distance(this.model.get(0).getCenter(), micro.getCenter());
 		int pos = 0;
-		double dist;
+		double dist = 0;
 
 		for (int i = 1; i < this.model.size(); i++) {
 			dist = distance(this.model.get(i).getCenter(), micro.getCenter());
@@ -375,18 +377,18 @@ public class Minas extends AbstractNoveltyDetection {
 	}
 
 	protected Clustering createClustreamModel(LinkedList<Instance> examples, int kValue) {
+		MinasClustream clusteringAlgo = new MinasClustream();
+		clusteringAlgo.kernelRadiFactorOption.setValue(2);
+		clusteringAlgo.maxNumKernelsOption.setValue(kValue);
+		clusteringAlgo.resetLearning(); clusteringAlgo.setBufferSize(10);
+		 
 		/*
-		 * MinasClustream clusteringAlgo = new MinasClustream();
-		 * clusteringAlgo.kernelRadiFactorOption.setValue(2);
-		 * clusteringAlgo.maxNumKernelsOption.setValue(kValue);
-		 * clusteringAlgo.resetLearning(); clusteringAlgo.setBufferSize(10);
-		 */
-	
 		Clustream clusteringAlgo = new Clustream();
 		clusteringAlgo.kernelRadiFactorOption.setValue(2);
 		clusteringAlgo.maxNumKernelsOption.setValue(kValue);
 		clusteringAlgo.timeWindowOption.setValue(Integer.MAX_VALUE);
 		clusteringAlgo.resetLearning();
+		*/
 
 		for (Instance data : examples)
 			clusteringAlgo.trainOnInstanceImpl(data);
@@ -613,21 +615,20 @@ public class Minas extends AbstractNoveltyDetection {
 
 	@Override
 	public double[] getVotesForInstance(Instance inst) {
-
-		int index = this.noveltyIndex();
-		if(this.getC() > index)
-			index = this.getC();
-		index++;
+		int index = this.maxMicroCluster(this.model) + 1;
+		double[] votes;
 		
-		double[] votes = new double[index];
-		// Case is not possible classify an example, array = 0 in all positions
-		Arrays.fill(votes, 0);
+		if(index != -1) { votes = new double[index]; }
+		else { votes = null; }
 		
 		String[] predict = doMinasPrediction(inst);
 		
-		if (predict != null) {
-			double predictedClass = Double.parseDouble(predict[0]);
-			boolean isNovelty = (predict[1] == "nov" || predict[1] == "extNov");
+		if (predict != null && votes != null) {
+			// Case is not possible classify an example, array = 0 in all positions
+			Arrays.fill(votes, 0);
+			
+			double predictedClass = model.get((int) Double.parseDouble(predict[0])).getClassId();
+			boolean isNovelty = (predict[1].equalsIgnoreCase("nov") || predict[1].equalsIgnoreCase("extNov"));
 			
 			if(!isNovelty)
 				votes[(int) predictedClass] = 1;
@@ -752,16 +753,7 @@ public class Minas extends AbstractNoveltyDetection {
 		sc.setWeight(cluster.size());
 		return sc;
 	}
-
-	public int noveltyIndex() {
-		int max = 0;
-		for (MicroCluster m : this.model) {
-			if ((m.getCategory() == "nov" || m.getCategory() == "extNov") && m.getClassId() > max)
-				max = (int) m.getClassId();
-		}
-		return (int) max;
-	}
-
+	
 	public int maxMicroCluster(List<MicroCluster> l) {
 		if(l != null) {
 			int maxValue = (int) l.get(0).getClassId();
